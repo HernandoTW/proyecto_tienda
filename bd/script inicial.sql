@@ -152,3 +152,26 @@ SELECT * FROM vista_saldos_clientes;
 
 SELECT '=== Ventas Pendientes ===' as '';
 SELECT * FROM ventas_diarias WHERE estado = 'pendiente';
+
+USE tienda_barrio_db;
+
+-- Tabla de usuarios para authentication
+CREATE TABLE usuarios (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    nombre VARCHAR(100) NOT NULL,
+    rol ENUM('admin', 'tendero') DEFAULT 'tendero',
+    estado BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Resto de las tablas (las que ya teníamos)...
+-- [Aquí van todas las tablas anteriores: proveedores, clientes, productos, etc.]
+
+-- Insertar usuario admin por defecto
+INSERT INTO usuarios (username, email, password_hash, nombre, rol) VALUES 
+('admin', 'admin@tienda.com', '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Administrador', 'admin');
+-- Password: password
