@@ -17,10 +17,12 @@ export const Dashboard: React.FC = () => {
     pendientes: []
   });
   const [loading, setLoading] = useState(true);
+  const [showTelefonoModal, setShowTelefonoModal] = useState(false);
+  const [telefonoInput, setTelefonoInput] = useState('');
+  const [pendienteSeleccionado, setPendienteSeleccionado] = useState<any>(null);
 
   const loadDashboardData = async () => {
     try {
-      // Cargar datos en paralelo
       const [
         ventasHoyRes,
         pendientesRes,
@@ -48,19 +50,53 @@ export const Dashboard: React.FC = () => {
     loadDashboardData();
   }, []);
 
-  // Función para enviar mensaje de WhatsApp
-  const enviarWhatsapp = (clienteTelefono: string, valor: number, descripcion: string, clienteNombre: string) => {
-    const telefono = clienteTelefono ? clienteTelefono.replace(/\D/g, '') : '';
+  // Función para manejar el clic en "Cobrar"
+  const handleCobrarClick = (pendiente: any) => {
+    setPendienteSeleccionado(pendiente);
     
-    if (!telefono) {
-      alert('El cliente no tiene número de teléfono registrado');
+    if (pendiente.cliente_telefono) {
+      // Si ya tiene teléfono, enviar WhatsApp directamente
+      enviarWhatsapp(pendiente.cliente_telefono, pendiente.valor_total, pendiente.descripcion, pendiente.cliente_nombre || 'cliente');
+    } else {
+      // Si no tiene teléfono, mostrar modal para ingresarlo
+      setTelefonoInput('');
+      setShowTelefonoModal(true);
+    }
+  };
+
+  // Función para enviar mensaje de WhatsApp
+  const enviarWhatsapp = (telefono: string, valor: number, descripcion: string, clienteNombre: string) => {
+    const telefonoLimpio = telefono.replace(/\D/g, '');
+    
+    if (!telefonoLimpio) {
+      alert('Por favor ingrese un número de teléfono válido');
       return;
     }
 
     const mensaje = `Cordial saludo, estimado ${clienteNombre}. Nos permitimos recordarle que tiene un saldo pendiente por pagar de $${valor.toLocaleString()}, por concepto de: ${descripcion}.`;
     
-    const url = `https://wa.me/${telefono}?text=${encodeURIComponent(mensaje)}`;
+    const url = `https://wa.me/${telefonoLimpio}?text=${encodeURIComponent(mensaje)}`;
     window.open(url, '_blank');
+  };
+
+  // Función para confirmar el envío desde el modal
+  const handleConfirmarWhatsapp = () => {
+    if (!telefonoInput.trim()) {
+      alert('Por favor ingrese un número de teléfono');
+      return;
+    }
+
+    if (pendienteSeleccionado) {
+      enviarWhatsapp(
+        telefonoInput,
+        pendienteSeleccionado.valor_total,
+        pendienteSeleccionado.descripcion,
+        pendienteSeleccionado.cliente_nombre || 'cliente'
+      );
+      setShowTelefonoModal(false);
+      setPendienteSeleccionado(null);
+      setTelefonoInput('');
+    }
   };
 
   if (loading) {
@@ -160,6 +196,11 @@ export const Dashboard: React.FC = () => {
                     <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: 'bold', fontSize: '14px' }}>
                         {pendiente.cliente_nombre || 'Cliente no registrado'}
+                        {pendiente.cliente_telefono && (
+                          <small style={{ color: '#27ae60', marginLeft: '8px', fontSize: '12px' }}>
+                            📞 {pendiente.cliente_telefono}
+                          </small>
+                        )}
                       </div>
                       <div style={{ fontSize: '13px', color: '#555' }}>
                         ${pendiente.valor_total.toLocaleString()} - {pendiente.descripcion}
@@ -170,12 +211,7 @@ export const Dashboard: React.FC = () => {
                     </div>
                     
                     <button 
-                      onClick={() => enviarWhatsapp(
-                        pendiente.cliente_telefono, 
-                        pendiente.valor_total, 
-                        pendiente.descripcion,
-                        pendiente.cliente_nombre || 'cliente'
-                      )}
+                      onClick={() => handleCobrarClick(pendiente)}
                       style={{ 
                         background: '#25D366', 
                         color: 'white', 
@@ -230,6 +266,76 @@ export const Dashboard: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Modal para ingresar teléfono */}
+      {showTelefonoModal && pendienteSeleccionado && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            background: 'white',
+            padding: '30px',
+            borderRadius: '8px',
+            width: '90%',
+            maxWidth: '400px'
+          }}>
+            <h3 style={{ marginBottom: '15px' }}>Ingresar Teléfono</h3>
+            
+            <p style={{ marginBottom: '15px', color: '#666', fontSize: '14px' }}>
+              Para enviar recordatorio a: <strong>{pendienteSeleccionado.cliente_nombre || 'Cliente no registrado'}</strong>
+            </p>
+            
+            <p style={{ marginBottom: '20px', color: '#666', fontSize: '14px' }}>
+              Valor pendiente: <strong style={{ color: '#e74c3c' }}>${pendienteSeleccionado.valor_total.toLocaleString()}</strong>
+            </p>
+
+            <div className="form-group">
+              <label>Número de WhatsApp *</label>
+              <input
+                type="tel"
+                value={telefonoInput}
+                onChange={(e) => setTelefonoInput(e.target.value)}
+                placeholder="Ej: 3001234567"
+                style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '5px' }}
+                required
+              />
+              <small style={{ color: '#666', fontSize: '12px', marginTop: '5px', display: 'block' }}>
+                Ingrese el número con código de país (Ej: 573001234567)
+              </small>
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+              <button 
+                onClick={handleConfirmarWhatsapp}
+                className="btn" 
+                style={{ background: '#25D366', flex: 1 }}
+              >
+                📱 Enviar WhatsApp
+              </button>
+              <button 
+                onClick={() => {
+                  setShowTelefonoModal(false);
+                  setPendienteSeleccionado(null);
+                  setTelefonoInput('');
+                }}
+                className="btn" 
+                style={{ background: '#95a5a6', width: 'auto' }}
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </Layout>
   );
 };
