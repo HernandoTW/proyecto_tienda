@@ -6,6 +6,8 @@ interface Venta {
   id: number;
   cliente_id?: number;
   cliente_nombre?: string;
+  cliente_alias?: string;
+  cliente_telefono?: string;
   fecha: string;
   valor_total: number;
   tipo_venta: 'contado' | 'credito' | 'pendiente';
@@ -25,11 +27,24 @@ export const Ventas: React.FC = () => {
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [editingVenta, setEditingVenta] = useState<Venta | null>(null);
+  
+  // Estado para nueva venta
   const [formData, setFormData] = useState({
     cliente_id: '',
     valor_total: 0,
     tipo_venta: 'contado' as 'contado' | 'credito' | 'pendiente',
     medio_pago: 'efectivo' as 'efectivo' | 'transferencia' | 'n/a',
+    descripcion: ''
+  });
+
+  // Estado para editar venta
+  const [editFormData, setEditFormData] = useState({
+    cliente_id: '',
+    valor_total: 0,
+    tipo_venta: 'contado' as 'contado' | 'credito' | 'pendiente',
+    medio_pago: 'efectivo' as 'efectivo' | 'transferencia' | 'n/a',
+    estado: 'completada' as 'completada' | 'pendiente',
     descripcion: ''
   });
 
@@ -59,7 +74,9 @@ export const Ventas: React.FC = () => {
     loadClientes();
   }, []);
 
+  // NUEVA VENTA
   const handleNewVenta = () => {
+    setEditingVenta(null);
     setFormData({
       cliente_id: '',
       valor_total: 0,
@@ -87,6 +104,56 @@ export const Ventas: React.FC = () => {
     } catch (error) {
       console.error('Error guardando venta:', error);
       alert('Error al guardar venta');
+    }
+  };
+
+  // EDITAR VENTA
+  const handleEditVenta = (venta: Venta) => {
+    setEditingVenta(venta);
+    setEditFormData({
+      cliente_id: venta.cliente_id?.toString() || '',
+      valor_total: venta.valor_total,
+      tipo_venta: venta.tipo_venta,
+      medio_pago: venta.medio_pago,
+      estado: venta.estado,
+      descripcion: venta.descripcion
+    });
+    setShowModal(true);
+  };
+
+  const handleUpdateVenta = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingVenta) return;
+    
+    try {
+      const ventaData = {
+        ...editFormData,
+        cliente_id: editFormData.cliente_id ? parseInt(editFormData.cliente_id) : null,
+        medio_pago: editFormData.tipo_venta === 'credito' || editFormData.tipo_venta === 'pendiente' ? 'n/a' : editFormData.medio_pago
+      };
+
+      await api.put(`/ventas/${editingVenta.id}`, ventaData);
+      alert('Venta actualizada correctamente');
+      setShowModal(false);
+      setEditingVenta(null);
+      loadVentas();
+    } catch (error) {
+      console.error('Error actualizando venta:', error);
+      alert('Error al actualizar venta');
+    }
+  };
+
+  // ELIMINAR VENTA
+  const handleDeleteVenta = async (id: number) => {
+    if (window.confirm('¿Estás seguro de eliminar esta venta?')) {
+      try {
+        await api.delete(`/ventas/${id}`);
+        alert('Venta eliminada correctamente');
+        loadVentas();
+      } catch (error) {
+        console.error('Error eliminando venta:', error);
+        alert('Error al eliminar venta');
+      }
     }
   };
 
@@ -145,6 +212,7 @@ export const Ventas: React.FC = () => {
                 <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #ddd' }}>Valor</th>
                 <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #ddd' }}>Tipo</th>
                 <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #ddd' }}>Estado</th>
+                <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #ddd' }}>Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -153,7 +221,10 @@ export const Ventas: React.FC = () => {
                   <td style={{ padding: '12px' }}>
                     {new Date(venta.fecha).toLocaleDateString()}
                   </td>
-                  <td style={{ padding: '12px' }}>{venta.cliente_nombre || 'Sin cliente'}</td>
+                  <td style={{ padding: '12px' }}>
+                    {venta.cliente_nombre || 'Sin cliente'}
+                    {venta.cliente_alias && <div style={{ color: '#666', fontSize: '12px' }}>({venta.cliente_alias})</div>}
+                  </td>
                   <td style={{ padding: '12px' }}>{venta.descripcion}</td>
                   <td style={{ padding: '12px' }}>${venta.valor_total.toLocaleString()}</td>
                   <td style={{ padding: '12px' }}>{getTipoVentaText(venta.tipo_venta)}</td>
@@ -168,6 +239,37 @@ export const Ventas: React.FC = () => {
                       {venta.estado}
                     </span>
                   </td>
+                  <td style={{ padding: '12px' }}>
+                    <button 
+                      onClick={() => handleEditVenta(venta)}
+                      style={{ 
+                        background: '#3498db', 
+                        color: 'white', 
+                        border: 'none', 
+                        padding: '6px 12px', 
+                        borderRadius: '4px', 
+                        marginRight: '8px',
+                        cursor: 'pointer',
+                        fontSize: '12px'
+                      }}
+                    >
+                      Editar
+                    </button>
+                    <button 
+                      onClick={() => handleDeleteVenta(venta.id)}
+                      style={{ 
+                        background: '#e74c3c', 
+                        color: 'white', 
+                        border: 'none', 
+                        padding: '6px 12px', 
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        fontSize: '12px'
+                      }}
+                    >
+                      Eliminar
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -175,7 +277,7 @@ export const Ventas: React.FC = () => {
         </div>
       </div>
 
-      {/* Modal para nueva venta */}
+      {/* Modal para nueva/editar venta */}
       {showModal && (
         <div style={{
           position: 'fixed',
@@ -196,14 +298,19 @@ export const Ventas: React.FC = () => {
             width: '90%',
             maxWidth: '500px'
           }}>
-            <h3 style={{ marginBottom: '20px' }}>Nueva Venta</h3>
+            <h3 style={{ marginBottom: '20px' }}>
+              {editingVenta ? 'Editar Venta' : 'Nueva Venta'}
+            </h3>
 
-            <form onSubmit={handleSaveVenta}>
+            <form onSubmit={editingVenta ? handleUpdateVenta : handleSaveVenta}>
               <div className="form-group">
                 <label>Cliente (opcional)</label>
                 <select
-                  value={formData.cliente_id}
-                  onChange={(e) => setFormData({...formData, cliente_id: e.target.value})}
+                  value={editingVenta ? editFormData.cliente_id : formData.cliente_id}
+                  onChange={(e) => editingVenta 
+                    ? setEditFormData({...editFormData, cliente_id: e.target.value})
+                    : setFormData({...formData, cliente_id: e.target.value})
+                  }
                   style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '5px' }}
                 >
                   <option value="">Seleccionar cliente</option>
@@ -218,8 +325,11 @@ export const Ventas: React.FC = () => {
               <div className="form-group">
                 <label>Descripción *</label>
                 <textarea
-                  value={formData.descripcion}
-                  onChange={(e) => setFormData({...formData, descripcion: e.target.value})}
+                  value={editingVenta ? editFormData.descripcion : formData.descripcion}
+                  onChange={(e) => editingVenta
+                    ? setEditFormData({...editFormData, descripcion: e.target.value})
+                    : setFormData({...formData, descripcion: e.target.value})
+                  }
                   style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '5px', fontFamily: 'inherit' }}
                   rows={3}
                   placeholder="Ej: 1 lb carne, 1 lt leche, 10 huevos"
@@ -231,24 +341,69 @@ export const Ventas: React.FC = () => {
                 <label>Valor Total *</label>
                 <input
                   type="number"
-                  value={formData.valor_total}
-                  onChange={(e) => setFormData({...formData, valor_total: Number(e.target.value)})}
+                  value={editingVenta ? editFormData.valor_total : formData.valor_total}
+                  onChange={(e) => editingVenta
+                    ? setEditFormData({...editFormData, valor_total: Number(e.target.value)})
+                    : setFormData({...formData, valor_total: Number(e.target.value)})
+                  }
                   required
                 />
               </div>
+
+              {/* Campo de estado solo en modo edición */}
+              {editingVenta && (
+                <div className="form-group">
+                  <label>Estado *</label>
+                  <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setEditFormData({...editFormData, estado: 'completada'})}
+                      style={{
+                        flex: 1,
+                        padding: '10px',
+                        border: `2px solid ${editFormData.estado === 'completada' ? '#27ae60' : '#ddd'}`,
+                        background: editFormData.estado === 'completada' ? '#27ae60' : 'white',
+                        color: editFormData.estado === 'completada' ? 'white' : '#333',
+                        borderRadius: '5px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Completada
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditFormData({...editFormData, estado: 'pendiente'})}
+                      style={{
+                        flex: 1,
+                        padding: '10px',
+                        border: `2px solid ${editFormData.estado === 'pendiente' ? '#f39c12' : '#ddd'}`,
+                        background: editFormData.estado === 'pendiente' ? '#f39c12' : 'white',
+                        color: editFormData.estado === 'pendiente' ? 'white' : '#333',
+                        borderRadius: '5px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Pendiente
+                    </button>
+                  </div>
+                </div>
+              )}
 
               <div className="form-group">
                 <label>Tipo de Venta *</label>
                 <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
                   <button
                     type="button"
-                    onClick={() => handleTipoVentaChange('contado')}
+                    onClick={() => editingVenta 
+                      ? setEditFormData({...editFormData, tipo_venta: 'contado', medio_pago: 'efectivo'})
+                      : handleTipoVentaChange('contado')
+                    }
                     style={{
                       flex: 1,
                       padding: '10px',
-                      border: `2px solid ${formData.tipo_venta === 'contado' ? '#3498db' : '#ddd'}`,
-                      background: formData.tipo_venta === 'contado' ? '#3498db' : 'white',
-                      color: formData.tipo_venta === 'contado' ? 'white' : '#333',
+                      border: `2px solid ${(editingVenta ? editFormData.tipo_venta : formData.tipo_venta) === 'contado' ? '#3498db' : '#ddd'}`,
+                      background: (editingVenta ? editFormData.tipo_venta : formData.tipo_venta) === 'contado' ? '#3498db' : 'white',
+                      color: (editingVenta ? editFormData.tipo_venta : formData.tipo_venta) === 'contado' ? 'white' : '#333',
                       borderRadius: '5px',
                       cursor: 'pointer'
                     }}
@@ -257,13 +412,16 @@ export const Ventas: React.FC = () => {
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleTipoVentaChange('credito')}
+                    onClick={() => editingVenta 
+                      ? setEditFormData({...editFormData, tipo_venta: 'credito', medio_pago: 'n/a'})
+                      : handleTipoVentaChange('credito')
+                    }
                     style={{
                       flex: 1,
                       padding: '10px',
-                      border: `2px solid ${formData.tipo_venta === 'credito' ? '#3498db' : '#ddd'}`,
-                      background: formData.tipo_venta === 'credito' ? '#3498db' : 'white',
-                      color: formData.tipo_venta === 'credito' ? 'white' : '#333',
+                      border: `2px solid ${(editingVenta ? editFormData.tipo_venta : formData.tipo_venta) === 'credito' ? '#3498db' : '#ddd'}`,
+                      background: (editingVenta ? editFormData.tipo_venta : formData.tipo_venta) === 'credito' ? '#3498db' : 'white',
+                      color: (editingVenta ? editFormData.tipo_venta : formData.tipo_venta) === 'credito' ? 'white' : '#333',
                       borderRadius: '5px',
                       cursor: 'pointer'
                     }}
@@ -272,13 +430,16 @@ export const Ventas: React.FC = () => {
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleTipoVentaChange('pendiente')}
+                    onClick={() => editingVenta 
+                      ? setEditFormData({...editFormData, tipo_venta: 'pendiente', medio_pago: 'n/a'})
+                      : handleTipoVentaChange('pendiente')
+                    }
                     style={{
                       flex: 1,
                       padding: '10px',
-                      border: `2px solid ${formData.tipo_venta === 'pendiente' ? '#3498db' : '#ddd'}`,
-                      background: formData.tipo_venta === 'pendiente' ? '#3498db' : 'white',
-                      color: formData.tipo_venta === 'pendiente' ? 'white' : '#333',
+                      border: `2px solid ${(editingVenta ? editFormData.tipo_venta : formData.tipo_venta) === 'pendiente' ? '#3498db' : '#ddd'}`,
+                      background: (editingVenta ? editFormData.tipo_venta : formData.tipo_venta) === 'pendiente' ? '#3498db' : 'white',
+                      color: (editingVenta ? editFormData.tipo_venta : formData.tipo_venta) === 'pendiente' ? 'white' : '#333',
                       borderRadius: '5px',
                       cursor: 'pointer'
                     }}
@@ -288,19 +449,22 @@ export const Ventas: React.FC = () => {
                 </div>
               </div>
 
-              {formData.tipo_venta === 'contado' && (
+              {(editingVenta ? editFormData.tipo_venta : formData.tipo_venta) === 'contado' && (
                 <div className="form-group">
                   <label>Medio de Pago *</label>
                   <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
                     <button
                       type="button"
-                      onClick={() => setFormData({...formData, medio_pago: 'efectivo'})}
+                      onClick={() => editingVenta
+                        ? setEditFormData({...editFormData, medio_pago: 'efectivo'})
+                        : setFormData({...formData, medio_pago: 'efectivo'})
+                      }
                       style={{
                         flex: 1,
                         padding: '10px',
-                        border: `2px solid ${formData.medio_pago === 'efectivo' ? '#27ae60' : '#ddd'}`,
-                        background: formData.medio_pago === 'efectivo' ? '#27ae60' : 'white',
-                        color: formData.medio_pago === 'efectivo' ? 'white' : '#333',
+                        border: `2px solid ${(editingVenta ? editFormData.medio_pago : formData.medio_pago) === 'efectivo' ? '#27ae60' : '#ddd'}`,
+                        background: (editingVenta ? editFormData.medio_pago : formData.medio_pago) === 'efectivo' ? '#27ae60' : 'white',
+                        color: (editingVenta ? editFormData.medio_pago : formData.medio_pago) === 'efectivo' ? 'white' : '#333',
                         borderRadius: '5px',
                         cursor: 'pointer'
                       }}
@@ -309,13 +473,16 @@ export const Ventas: React.FC = () => {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setFormData({...formData, medio_pago: 'transferencia'})}
+                      onClick={() => editingVenta
+                        ? setEditFormData({...editFormData, medio_pago: 'transferencia'})
+                        : setFormData({...formData, medio_pago: 'transferencia'})
+                      }
                       style={{
                         flex: 1,
                         padding: '10px',
-                        border: `2px solid ${formData.medio_pago === 'transferencia' ? '#27ae60' : '#ddd'}`,
-                        background: formData.medio_pago === 'transferencia' ? '#27ae60' : 'white',
-                        color: formData.medio_pago === 'transferencia' ? 'white' : '#333',
+                        border: `2px solid ${(editingVenta ? editFormData.medio_pago : formData.medio_pago) === 'transferencia' ? '#27ae60' : '#ddd'}`,
+                        background: (editingVenta ? editFormData.medio_pago : formData.medio_pago) === 'transferencia' ? '#27ae60' : 'white',
+                        color: (editingVenta ? editFormData.medio_pago : formData.medio_pago) === 'transferencia' ? 'white' : '#333',
                         borderRadius: '5px',
                         cursor: 'pointer'
                       }}
@@ -328,12 +495,15 @@ export const Ventas: React.FC = () => {
 
               <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
                 <button type="submit" className="btn">
-                  Registrar Venta
+                  {editingVenta ? 'Actualizar' : 'Registrar'} Venta
                 </button>
                 <button 
                   type="button" 
                   className="btn" 
-                  onClick={() => setShowModal(false)}
+                  onClick={() => {
+                    setShowModal(false);
+                    setEditingVenta(null);
+                  }}
                   style={{ background: '#95a5a6' }}
                 >
                   Cancelar
