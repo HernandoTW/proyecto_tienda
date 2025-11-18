@@ -4,9 +4,7 @@ import api from '../services/api';
 
 interface DashboardData {
   ventasHoy: { total: number; count: number };
-  clientesActivos: number;
   ventasPendientes: number;
-  totalProductos: number;
   ventasRecientes: any[];
   pendientes: any[];
 }
@@ -14,9 +12,7 @@ interface DashboardData {
 export const Dashboard: React.FC = () => {
   const [data, setData] = useState<DashboardData>({
     ventasHoy: { total: 0, count: 0 },
-    clientesActivos: 0,
     ventasPendientes: 0,
-    totalProductos: 0,
     ventasRecientes: [],
     pendientes: []
   });
@@ -27,23 +23,17 @@ export const Dashboard: React.FC = () => {
       // Cargar datos en paralelo
       const [
         ventasHoyRes,
-        clientesRes,
         pendientesRes,
-        productosRes,
         ventasRecientesRes
       ] = await Promise.all([
         api.get('/ventas/hoy/estadisticas'),
-        api.get('/clientes'),
         api.get('/ventas/pendientes'),
-        api.get('/productos'),
         api.get('/ventas')
       ]);
 
       setData({
         ventasHoy: ventasHoyRes.data,
-        clientesActivos: clientesRes.data.length,
         ventasPendientes: pendientesRes.data.length,
-        totalProductos: productosRes.data.length,
         ventasRecientes: ventasRecientesRes.data.slice(0, 5),
         pendientes: pendientesRes.data.slice(0, 5)
       });
@@ -58,6 +48,21 @@ export const Dashboard: React.FC = () => {
     loadDashboardData();
   }, []);
 
+  // Función para enviar mensaje de WhatsApp
+  const enviarWhatsapp = (clienteTelefono: string, valor: number, descripcion: string, clienteNombre: string) => {
+    const telefono = clienteTelefono ? clienteTelefono.replace(/\D/g, '') : '';
+    
+    if (!telefono) {
+      alert('El cliente no tiene número de teléfono registrado');
+      return;
+    }
+
+    const mensaje = `Cordial saludo, estimado ${clienteNombre}. Nos permitimos recordarle que tiene un saldo pendiente por pagar de $${valor.toLocaleString()}, por concepto de: ${descripcion}.`;
+    
+    const url = `https://wa.me/${telefono}?text=${encodeURIComponent(mensaje)}`;
+    window.open(url, '_blank');
+  };
+
   if (loading) {
     return (
       <Layout title="Dashboard">
@@ -70,24 +75,15 @@ export const Dashboard: React.FC = () => {
 
   return (
     <Layout title="Dashboard">
-      {/* Estadísticas */}
+      {/* Estadísticas Simplificadas */}
       <div className="stats-grid">
         <div className="stat-card">
           <h3>Ventas Hoy</h3>
           <div className="number">${data.ventasHoy.total.toLocaleString()}</div>
-          <small>{data.ventasHoy.count} ventas</small>
-        </div>
-        <div className="stat-card">
-          <h3>Clientes Activos</h3>
-          <div className="number">{data.clientesActivos}</div>
         </div>
         <div className="stat-card">
           <h3>Pendientes</h3>
           <div className="number" style={{ color: '#e74c3c' }}>{data.ventasPendientes}</div>
-        </div>
-        <div className="stat-card">
-          <h3>Productos</h3>
-          <div className="number">{data.totalProductos}</div>
         </div>
       </div>
 
@@ -136,24 +132,66 @@ export const Dashboard: React.FC = () => {
 
         {/* Alertas de Pendientes */}
         <div className="card">
-          <h2 style={{ color: '#e74c3c' }}>⚠️ Pendientes por Cobrar</h2>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+            <h2 style={{ color: '#e74c3c', margin: 0 }}>⚠️ Pendientes por Cobrar</h2>
+            <span style={{ 
+              background: '#e74c3c', 
+              color: 'white', 
+              padding: '4px 8px', 
+              borderRadius: '12px',
+              fontSize: '14px',
+              fontWeight: 'bold'
+            }}>
+              {data.ventasPendientes}
+            </span>
+          </div>
+          
           {data.pendientes.length > 0 ? (
             <div>
               {data.pendientes.map((pendiente) => (
                 <div key={pendiente.id} style={{
-                  padding: '10px',
+                  padding: '12px',
                   border: '1px solid #f39c12',
                   borderRadius: '5px',
                   marginBottom: '10px',
                   background: '#fef9e7'
                 }}>
-                  <div style={{ fontWeight: 'bold' }}>
-                    {pendiente.cliente_nombre || 'Cliente no registrado'}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 'bold', fontSize: '14px' }}>
+                        {pendiente.cliente_nombre || 'Cliente no registrado'}
+                      </div>
+                      <div style={{ fontSize: '13px', color: '#555' }}>
+                        ${pendiente.valor_total.toLocaleString()} - {pendiente.descripcion}
+                      </div>
+                      <small style={{ color: '#7f8c8d', fontSize: '12px' }}>
+                        {new Date(pendiente.fecha).toLocaleDateString()}
+                      </small>
+                    </div>
+                    
+                    <button 
+                      onClick={() => enviarWhatsapp(
+                        pendiente.cliente_telefono, 
+                        pendiente.valor_total, 
+                        pendiente.descripcion,
+                        pendiente.cliente_nombre || 'cliente'
+                      )}
+                      style={{ 
+                        background: '#25D366', 
+                        color: 'white', 
+                        border: 'none', 
+                        padding: '6px 12px', 
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        fontSize: '12px',
+                        fontWeight: 'bold',
+                        marginLeft: '10px',
+                        whiteSpace: 'nowrap'
+                      }}
+                    >
+                      💬 Cobrar
+                    </button>
                   </div>
-                  <div>${pendiente.valor_total.toLocaleString()} - {pendiente.descripcion}</div>
-                  <small style={{ color: '#7f8c8d' }}>
-                    {new Date(pendiente.fecha).toLocaleDateString()}
-                  </small>
                 </div>
               ))}
             </div>

@@ -47,14 +47,14 @@ export class VentaModel {
   }
 
   static async findPendientes(): Promise<VentaDiaria[]> {
-    const [rows] = await pool.execute(
-      `SELECT v.*, c.nombre as cliente_nombre, c.alias as cliente_alias 
-       FROM ventas_diarias v 
-       LEFT JOIN clientes c ON v.cliente_id = c.id 
-       WHERE v.estado = 'pendiente' 
-       ORDER BY v.fecha DESC`
-    );
-    return rows as VentaDiaria[];
+  const [rows] = await pool.execute(
+    `SELECT v.*, c.nombre as cliente_nombre, c.alias as cliente_alias, c.telefono as cliente_telefono 
+     FROM ventas_diarias v 
+     LEFT JOIN clientes c ON v.cliente_id = c.id 
+     WHERE v.estado = 'pendiente' 
+     ORDER BY v.fecha DESC`
+  );
+  return rows as VentaDiaria[];
   }
 
   static async create(venta: Omit<VentaDiaria, 'id'>): Promise<number> {
