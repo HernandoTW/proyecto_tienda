@@ -6,6 +6,7 @@ import productosRoutes from './productos';
 import proveedoresRoutes from './proveedores';
 import abonosRoutes from './abonos';
 import pagosProveedoresRoutes from './pagos-proveedores';
+import negocioRoutes from './negocio';
 
 const router = Router();
 
@@ -16,6 +17,7 @@ router.use('/productos', productosRoutes);
 router.use('/proveedores', proveedoresRoutes);
 router.use('/abonos', abonosRoutes);
 router.use('/pagos-proveedores', pagosProveedoresRoutes);
+router.use('/negocio', negocioRoutes);
 
 router.get('/health', (req, res) => {
   res.json({ 

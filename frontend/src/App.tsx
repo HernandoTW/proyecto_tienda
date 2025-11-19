@@ -9,6 +9,8 @@ import { Ventas } from './pages/Ventas';
 import { Abonos } from './pages/Abonos';
 import { EstadoCuentas } from './pages/EstadoCuentas';
 import { PagosProveedores } from './pages/PagosProveedores';
+import { Parametrizacion } from './pages/Parametrizacion';
+
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const token = localStorage.getItem('token');
@@ -44,6 +46,14 @@ function App() {
             </ProtectedRoute>
           } 
         />
+        <Route 
+          path="/parametrizacion" 
+          element={
+            <ProtectedRoute>
+              <Parametrizacion />
+            </ProtectedRoute>
+          } 
+        />        
         <Route 
           path="/productos" 
           element={

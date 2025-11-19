@@ -14,10 +14,10 @@ const menuItems = [
   { path: '/clientes', label: 'Clientes', icon: '👥' },
   { path: '/ventas', label: 'Ventas', icon: '💰' },
   { path: '/abonos', label: 'Abonos', icon: '💳' },
-  { path: '/pagos-proveedores', label: 'Pagos Proveedores', icon: '🏦' },
   { path: '/estado-cuentas', label: 'Estado Cuentas', icon: '📋' },
   { path: '/productos', label: 'Productos', icon: '📦' },
   { path: '/proveedores', label: 'Proveedores', icon: '🏢' },
+  { path: '/parametrizacion', label: 'Parametrización', icon: '⚙️' },
 ];
 
   return (
